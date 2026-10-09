@@ -1,0 +1,148 @@
+name: FreeWorld Iran Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/ir/freeworldiran/app
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'FreeWorldIran'
+          include ':app'
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'ir.freeworldiran.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'ir.freeworldiran.app'
+                  minSdk 26
+                  targetSdk 35
+                  versionCode 1
+                  versionName '0.1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar"
+                  android:label="دنیای آزاد ایران"
+                  android:usesCleartextTraffic="false">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/ir/freeworldiran/app/MainActivity.java <<'EOF'
+          package ir.freeworldiran.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.graphics.Color;
+          import android.view.Gravity;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+              @Override
+              public void onCreate(Bundle state) {
+                  super.onCreate(state);
+
+                  LinearLayout layout = new LinearLayout(this);
+                  layout.setOrientation(LinearLayout.VERTICAL);
+                  layout.setGravity(Gravity.CENTER);
+                  layout.setPadding(24, 24, 24, 24);
+                  layout.setBackgroundColor(Color.rgb(12, 25, 43));
+
+                  TextView title = new TextView(this);
+                  title.setText("🌍 دنیای آزاد ایران");
+                  title.setTextSize(28);
+                  title.setTextColor(Color.WHITE);
+                  title.setGravity(Gravity.CENTER);
+
+                  TextView info = new TextView(this);
+                  info.setText(
+                      "FreeWorld Iran\n\n" +
+                      "سازنده: Mehdi.n1380\n\n" +
+                      "نسخه آزمایشی\n\n" +
+                      "اتصال VPN هنوز فعال نشده است."
+                  );
+                  info.setTextSize(18);
+                  info.setTextColor(Color.LTGRAY);
+                  info.setGravity(Gravity.CENTER);
+                  info.setPadding(0, 32, 0, 0);
+
+                  layout.addView(title);
+                  layout.addView(info);
+                  setContentView(layout);
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeWorldIran-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
